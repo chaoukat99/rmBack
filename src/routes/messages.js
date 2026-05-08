@@ -218,7 +218,8 @@ router.post('/:deliveryId', authenticate, uploadS3.single('file'), async (req, r
     let fileSize = null;
 
     if (req.file) {
-        content = req.file.location; // Use S3 URL instead of local path
+        // Fallback to path if location (S3) is not available
+        content = req.file.location || req.file.path; 
         fileSize = req.file.size;
         // If message_type wasn't explicitly sent, try to guess from mimetype
         if (!req.body.message_type || req.body.message_type === 'text') {
