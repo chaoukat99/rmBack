@@ -11,6 +11,77 @@ const { notifyUsers } = require('../utils/pushNotifications');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
+// ─────────────────────────────────────────────────────────────────────
+// OTP Store  (in-memory — survives server restarts in dev, good enough
+// for a 10-minute window; replace Map with Redis for production scale)
+// ─────────────────────────────────────────────────────────────────────
+const otpStore = new Map(); // key: normalizedPhone, value: { code, expiresAt }
+const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+// Plug-in SMS sender — swap this one function for Twilio/InfoBip
+async function sendSms(phone, message) {
+    // ── PRODUCTION: uncomment and fill in your provider ──────────────
+    // const twilio = require('twilio')(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
+    // await twilio.messages.create({ body: message, from: process.env.TWILIO_FROM, to: phone });
+    // ─────────────────────────────────────────────────────────────────
+    // DEV fallback: just log the code so you can test without a real SMS account
+    console.log(`[OTP SMS] To: ${phone} | Message: ${message}`);
+}
+
+// POST /api/auth/send-otp
+// Body: { phone: "+212600000000" }
+router.post('/send-otp', async (req, res) => {
+    const { phone } = req.body;
+    if (!phone || phone.trim().length < 6) {
+        return res.status(400).json({ error: 'Numéro de téléphone invalide.' });
+    }
+
+    const normalizedPhone = phone.trim();
+
+    // Rate-limit: don't resend if an unexpired OTP exists sent < 60s ago
+    const existing = otpStore.get(normalizedPhone);
+    if (existing && Date.now() < existing.expiresAt - OTP_TTL_MS + 60000) {
+        return res.status(429).json({ error: 'Veuillez attendre 60 secondes avant de renvoyer un code.' });
+    }
+
+    const code = String(Math.floor(100000 + Math.random() * 900000)); // 6 digits
+    otpStore.set(normalizedPhone, { code, expiresAt: Date.now() + OTP_TTL_MS });
+
+    try {
+        await sendSms(normalizedPhone, `Votre code RM Tawssil : ${code}. Valable 10 minutes.`);
+        res.json({ message: 'Code envoyé avec succès.' });
+    } catch (err) {
+        console.error('OTP send error:', err);
+        res.status(500).json({ error: "Impossible d'envoyer le SMS. Réessayez." });
+    }
+});
+
+// POST /api/auth/verify-otp
+// Body: { phone: "+212600000000", code: "123456" }
+router.post('/verify-otp', (req, res) => {
+    const { phone, code } = req.body;
+    if (!phone || !code) {
+        return res.status(400).json({ error: 'Téléphone et code requis.' });
+    }
+
+    const normalizedPhone = phone.trim();
+    const record = otpStore.get(normalizedPhone);
+
+    if (!record) {
+        return res.status(400).json({ error: 'Aucun code envoyé pour ce numéro.' });
+    }
+    if (Date.now() > record.expiresAt) {
+        otpStore.delete(normalizedPhone);
+        return res.status(400).json({ error: 'Code expiré. Veuillez en demander un nouveau.' });
+    }
+    if (record.code !== code.trim()) {
+        return res.status(400).json({ error: 'Code incorrect.' });
+    }
+
+    // Valid — clean up
+    otpStore.delete(normalizedPhone);
+    res.json({ valid: true, message: 'Numéro vérifié avec succès.' });
+});
 
 const upload = uploadS3.fields([
     { name: 'avatar', maxCount: 1 },

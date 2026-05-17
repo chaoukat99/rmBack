@@ -79,9 +79,6 @@ router.get('/conversations', authenticate, async (req, res) => {
             queryParams.push(userId);
         }
 
-        const fs = require('fs');
-        const logMsg = `[${new Date().toISOString()}] GET /conversations User: ${userId} Role: ${role} Params: ${JSON.stringify(queryParams)}\n`;
-        fs.appendFileSync('/Users/mac/work/RmApp/Back/RmTawssilBackend/debug.log', logMsg);
 
         const [rows] = await db.query(`
             SELECT

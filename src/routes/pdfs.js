@@ -93,9 +93,14 @@ router.post('/generate', authenticate, async (req, res) => {
         }
 
         // Initialize Puppeteer-Core
+        const os = require('os');
+        const defaultChromePath = os.platform() === 'darwin' 
+            ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+            : '/usr/bin/google-chrome';
+
         const browser = await puppeteer.launch({ 
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome' // Fallback to common Linux path
+            executablePath: process.env.CHROME_PATH_OVERRIDE || defaultChromePath
         });
         const page = await browser.newPage();
         await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
