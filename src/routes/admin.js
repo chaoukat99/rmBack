@@ -120,7 +120,11 @@ router.get('/users', authenticate, authorizeRoles('admin'), async (req, res) => 
         const [users] = await db.query(`
             SELECT u.id, u.name, u.email, u.role, u.phone, u.avatar,
                    u.status, u.created_at,
-                   tp.rating, tp.total_deliveries, tp.verified, tp.subscription_status, tp.messaging_disabled
+                   tp.rating, tp.total_deliveries, tp.verified, tp.subscription_status, tp.messaging_disabled,
+                   tp.vehicle, tp.vehicle_capacity, tp.license_number,
+                   (SELECT file_url FROM transporter_documents WHERE user_id = u.id AND doc_type = 'driver_license' LIMIT 1) AS driver_license,
+                   (SELECT file_url FROM transporter_documents WHERE user_id = u.id AND doc_type = 'vehicle_registration' LIMIT 1) AS registration_document,
+                   (SELECT JSON_ARRAYAGG(file_url) FROM transporter_documents WHERE user_id = u.id AND doc_type = 'vehicle_photo') AS vehicle_photos
             FROM   users u
             LEFT   JOIN transporter_profiles tp ON tp.user_id = u.id AND u.role = 'transporter'
             ${whereClause}
@@ -456,6 +460,10 @@ router.patch('/transporters/:id/verify', authenticate, authorizeRoles('admin'), 
             'UPDATE transporter_profiles SET verified = ? WHERE user_id = ?',
             [verified ? 1 : 0, req.params.id]
         );
+
+        if (verified) {
+            await db.query("UPDATE users SET status = 'active' WHERE id = ?", [req.params.id]);
+        }
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ error: 'Profil transporteur introuvable' });
