@@ -395,6 +395,36 @@ router.patch('/users/:id/messaging', authenticate, authorizeRoles('admin'), asyn
 });
 
 // ─────────────────────────────────────────────────────────────────────
+// PATCH /api/admin/users/:id/subscription
+// Activate or block a transporter based on their (offline) payment.
+// active=true  → full access (subscription_status = 'active')
+// active=false → blocked      (subscription_status = 'blocked')
+// ─────────────────────────────────────────────────────────────────────
+router.patch('/users/:id/subscription', authenticate, authorizeRoles('admin'), async (req, res) => {
+    const { active } = req.body;
+    const status = active ? 'active' : 'blocked';
+    try {
+        const [result] = await db.query(
+            'UPDATE transporter_profiles SET subscription_status = ? WHERE user_id = ?',
+            [status, req.params.id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Profil transporteur introuvable' });
+        }
+
+        res.json({
+            message: `Transporteur ${active ? 'activé' : 'bloqué'} avec succès`,
+            id: req.params.id,
+            subscription_status: status,
+        });
+    } catch (err) {
+        console.error('PATCH /admin/users/:id/subscription Error:', err);
+        res.status(500).json({ error: 'Erreur interne du serveur' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────
 // GET /api/admin/transporters/pending
 // Get list of transporters awaiting verification (verified = 0)
 // ─────────────────────────────────────────────────────────────────────

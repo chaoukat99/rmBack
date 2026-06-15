@@ -337,17 +337,29 @@ router.post('/:deliveryId', authenticate, uploadS3.single('file'), async (req, r
 
         // Create a notification for the recipient
         const [senderUser] = await db.query('SELECT name FROM users WHERE id = ?', [req.user.id]);
+        const notificationId = generateUUID();
+        const senderName = senderUser[0]?.name || 'Un utilisateur';
+        const notifTitle = '💬 Nouveau Message';
+        const notifBody = `${senderName} vous a envoyé un message.`;
         await db.query(
             'INSERT INTO notifications (id, user_id, type, title, body, delivery_id) VALUES (?, ?, ?, ?, ?, ?)',
-            [
-                generateUUID(),
-                recipient_id,
-                'message',
-                '💬 Nouveau Message',
-                `${senderUser[0]?.name || 'Un utilisateur'} vous a envoyé un message.`,
-                req.params.deliveryId,
-            ]
+            [notificationId, recipient_id, 'message', notifTitle, notifBody, req.params.deliveryId]
         );
+
+        // Real-time push to the recipient's personal room so the bell/toast
+        // update even when they are not viewing this conversation.
+        if (io) {
+            io.to(`user_${recipient_id}`).emit('notification', {
+                id: notificationId,
+                type: 'message',
+                title: notifTitle,
+                body: notifBody,
+                message: notifBody,
+                delivery_id: req.params.deliveryId,
+                is_read: 0,
+                created_at: new Date().toISOString(),
+            });
+        }
 
         res.status(201).json(message);
     } catch (err) {

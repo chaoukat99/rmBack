@@ -253,7 +253,7 @@ router.post('/login', async (req, res) => {
 const { authenticate } = require('../middlewares/auth');
 router.get('/me', authenticate, async (req, res) => {
     try {
-        const [users] = await db.query('SELECT id, name, email, role, phone, avatar, address, status FROM users WHERE id = ?', [req.user.id]);
+        const [users] = await db.query('SELECT id, name, email, role, phone, avatar, address, status, created_at FROM users WHERE id = ?', [req.user.id]);
         if (users.length === 0) return res.status(404).json({ error: "User not found" });
 
         let profile = users[0];

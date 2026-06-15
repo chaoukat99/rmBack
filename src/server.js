@@ -90,6 +90,16 @@ app.set('io', io);
 io.on('connection', (socket) => {
     console.log('🔗 Nouvel utilisateur connecté :', socket.id);
 
+    // ── Per-user notification room ───────────────────────────────────────
+    // Each authenticated client joins its personal room so the server can
+    // push notifications (e.g. new chat messages) regardless of which
+    // delivery/chat screen the user is currently on.
+    socket.on('join_user', (userId) => {
+        if (!userId) return;
+        socket.join(`user_${userId}`);
+        console.log(`🔔 Socket ${socket.id} rejoint la room utilisateur: user_${userId}`);
+    });
+
     // ── Delivery Chat & Tracking Rooms ──────────────────────────────────
     // Join a delivery-specific room for chat & tracking
     socket.on('join_delivery', (deliveryId) => {
