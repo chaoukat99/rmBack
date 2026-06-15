@@ -10,6 +10,7 @@ const puppeteer = require('puppeteer-core');
 const { PutObjectCommand } = require('@aws-sdk/client-s3');
 const s3Client = require('../config/s3');
 const { notifyUsers } = require('../utils/pushNotifications');
+const { sendChatEmail } = require('../utils/email');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
@@ -305,7 +306,7 @@ router.post('/:deliveryId', authenticate, uploadS3.single('file'), async (req, r
         }
 
         // Verify recipient exists
-        const [recipient] = await db.query('SELECT id, name FROM users WHERE id = ?', [recipient_id]);
+        const [recipient] = await db.query('SELECT id, name, email FROM users WHERE id = ?', [recipient_id]);
         if (recipient.length === 0) {
             return res.status(404).json({ error: 'Destinataire introuvable' });
         }
@@ -360,6 +361,20 @@ router.post('/:deliveryId', authenticate, uploadS3.single('file'), async (req, r
                 created_at: new Date().toISOString(),
             });
         }
+
+        // Email the recipient: first message of the conversation, else a
+        // throttled "unread message" reminder (non-blocking).
+        (async () => {
+            try {
+                const [[{ count }]] = await db.query(
+                    'SELECT COUNT(*) AS count FROM messages WHERE delivery_id = ?',
+                    [req.params.deliveryId]
+                );
+                sendChatEmail(recipient[0], senderName, req.params.deliveryId, count <= 1);
+            } catch (e) {
+                console.error('[Email] chat notify error:', e.message);
+            }
+        })();
 
         res.status(201).json(message);
     } catch (err) {

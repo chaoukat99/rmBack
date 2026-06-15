@@ -5,6 +5,7 @@ const { authenticate, authorizeRoles } = require('../middlewares/auth');
 const { generateUUID } = require('../utils/uuid');
 const { createVoyageSchema, updateVoyageStatusSchema } = require('../utils/validations');
 const { notifyUsers } = require('../utils/pushNotifications');
+const { sendVoyageCreatedEmails } = require('../utils/email');
 
 
 // ─────────────────────────────────────────────────────────────────────
@@ -154,6 +155,23 @@ router.post('/', authenticate, authorizeRoles('transporter'), async (req, res) =
             'UPDATE transporter_profiles SET next_trip = ? WHERE user_id = ?',
             [departure_date, req.user.id]
         );
+
+        // Email: confirmation to transporter + broadcast to all active clients (non-blocking)
+        (async () => {
+            try {
+                const [[transporter]] = await db.query(
+                    'SELECT name, email FROM users WHERE id = ?', [req.user.id]
+                );
+                await sendVoyageCreatedEmails(db, transporter, {
+                    from_country: traj.from_country, from_city: traj.from_city,
+                    to_country: traj.to_country, to_city: traj.to_city,
+                    departure_date, estimated_arrival,
+                    price_per_kg, available_capacity,
+                });
+            } catch (e) {
+                console.error('[Email] voyage notify error:', e.message);
+            }
+        })();
 
         res.status(201).json({
             message: 'Voyage créé avec succès',

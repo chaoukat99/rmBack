@@ -8,6 +8,7 @@ const { validate } = require('../middlewares/validate');
 const { registerSchema, loginSchema } = require('../utils/validations');
 const uploadS3 = require('../middlewares/upload');
 const { notifyUsers } = require('../utils/pushNotifications');
+const { sendWelcomeEmail } = require('../utils/email');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
@@ -181,6 +182,9 @@ router.post('/register', upload, async (req, res) => {
 
         // Generate JWT
         const token = generateToken(userId, role);
+
+        // Welcome email (non-blocking — never delays/breaks the response)
+        sendWelcomeEmail({ name, email, role });
 
         res.status(201).json({
             message: 'User registered successfully',
