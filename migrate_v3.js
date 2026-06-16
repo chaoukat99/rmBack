@@ -25,15 +25,15 @@ async function run() {
         },
         {
             name: 'Add push_token column to users',
-            sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token VARCHAR(500) DEFAULT NULL`,
+            sql: `ALTER TABLE users ADD COLUMN push_token VARCHAR(500) DEFAULT NULL`,
         },
         {
             name: 'Add city column to users',
-            sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100) DEFAULT NULL`,
+            sql: `ALTER TABLE users ADD COLUMN city VARCHAR(100) DEFAULT NULL`,
         },
         {
             name: 'Add notification_prefs column to users',
-            sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_prefs JSON DEFAULT NULL`,
+            sql: `ALTER TABLE users ADD COLUMN notification_prefs JSON DEFAULT NULL`,
         },
         {
             name: 'Add password_reset_tokens table',
@@ -46,7 +46,7 @@ async function run() {
                     used TINYINT(1) NOT NULL DEFAULT 0,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                )
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
             `,
         },
         {
@@ -69,7 +69,7 @@ async function run() {
                     FOREIGN KEY (delivery_id) REFERENCES deliveries(id) ON DELETE CASCADE,
                     FOREIGN KEY (submitted_by) REFERENCES users(id) ON DELETE CASCADE,
                     INDEX idx_pf_delivery (delivery_id)
-                )
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
             `,
         },
         {
@@ -90,12 +90,12 @@ async function run() {
                     FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE,
                     INDEX idx_receipt_delivery (delivery_id),
                     INDEX idx_receipt_number (receipt_number)
-                )
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
             `,
         },
         {
             name: 'Add notification_id column to notifications (for deep links)',
-            sql: `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id VARCHAR(36) DEFAULT NULL`,
+            sql: `ALTER TABLE notifications ADD COLUMN reference_id VARCHAR(36) DEFAULT NULL`,
         },
     ];
 

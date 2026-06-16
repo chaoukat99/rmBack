@@ -103,7 +103,7 @@ router.get('/revenue', authenticate, authorizeRoles('admin'), async (req, res) =
 // ─────────────────────────────────────────────────────────────────────
 router.get('/users', authenticate, authorizeRoles('admin'), async (req, res) => {
     try {
-        const { role, status, search } = req.query;
+        const { role, status, search, limit, page } = req.query;
         const params = [];
         const conditions = [];
 
@@ -117,6 +117,15 @@ router.get('/users', authenticate, authorizeRoles('admin'), async (req, res) => 
 
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+        // Optional pagination — defaults to returning ALL users (no hard cap)
+        let paginationClause = '';
+        if (limit) {
+            const pageSize = Math.max(1, parseInt(limit) || 500);
+            const offset   = Math.max(0, ((parseInt(page) || 1) - 1) * pageSize);
+            paginationClause = `LIMIT ${pageSize} OFFSET ${offset}`;
+            params.push(); // params already built above; SQL placeholders not used for LIMIT
+        }
+
         const [users] = await db.query(`
             SELECT u.id, u.name, u.email, u.role, u.phone, u.avatar,
                    u.status, u.created_at,
@@ -129,7 +138,7 @@ router.get('/users', authenticate, authorizeRoles('admin'), async (req, res) => 
             LEFT   JOIN transporter_profiles tp ON tp.user_id = u.id AND u.role = 'transporter'
             ${whereClause}
             ORDER BY u.created_at DESC
-            LIMIT 100
+            ${paginationClause}
         `, params);
 
         res.json(users);
