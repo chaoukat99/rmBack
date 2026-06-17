@@ -292,6 +292,28 @@ INSERT INTO `transporter_trajectories` (`id`, `transporter_id`, `from_country`, 
 -- --------------------------------------------------------
 
 --
+-- Structure de la table `client_trajectories`
+-- A route a client wants served ("request voyage"). Surfaced to transporters.
+-- Max 5 per client (enforced in the API layer).
+--
+
+CREATE TABLE `client_trajectories` (
+  `id` varchar(36) NOT NULL,
+  `client_id` varchar(36) NOT NULL,
+  `from_country` varchar(100) NOT NULL,
+  `from_city` varchar(100) NOT NULL,
+  `to_country` varchar(100) NOT NULL,
+  `to_city` varchar(100) NOT NULL,
+  `status` enum('active','archived') NOT NULL DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_client_traj_client` (`client_id`),
+  KEY `idx_client_traj_route` (`from_city`,`to_city`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Structure de la table `users`
 --
 

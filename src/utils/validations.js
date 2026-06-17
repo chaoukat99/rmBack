@@ -112,6 +112,14 @@ const createTrajectorySchema = z.object({
     to_city:      z.string().min(2, 'Ville de destination requise'),
 });
 
+// Client "request voyage" trajectory (same shape as a transporter trajectory)
+const createClientTrajectorySchema = z.object({
+    from_country: z.string().min(2, 'Pays de départ requis'),
+    from_city:    z.string().min(2, 'Ville de départ requise'),
+    to_country:   z.string().min(2, 'Pays de destination requis'),
+    to_city:      z.string().min(2, 'Ville de destination requise'),
+});
+
 const approveTransporterSchema = z.object({
     decision:    z.enum(['approved', 'rejected']),
     admin_note:  z.string().optional(),
@@ -202,6 +210,7 @@ module.exports = {
     updateTransporterProfileSchema,
     approveTransporterSchema,
     createTrajectorySchema,
+    createClientTrajectorySchema,
     // Messages
     sendMessageSchema,
     // Reclamations

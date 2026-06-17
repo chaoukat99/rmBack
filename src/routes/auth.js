@@ -180,6 +180,17 @@ router.post('/register', upload, async (req, res) => {
             }
         }
 
+        // If client, optionally store one initial trajectory ("request voyage").
+        // Up to 5 more can be added later from the profile.
+        if (role === 'client' && trajectory &&
+            trajectory.from_country && trajectory.from_city &&
+            trajectory.to_country && trajectory.to_city) {
+            await db.query(
+                'INSERT INTO client_trajectories (id, client_id, from_country, from_city, to_country, to_city) VALUES (?, ?, ?, ?, ?, ?)',
+                [generateUUID(), userId, trajectory.from_country, trajectory.from_city, trajectory.to_country, trajectory.to_city]
+            );
+        }
+
         // Generate JWT
         const token = generateToken(userId, role);
 
